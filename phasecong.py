@@ -1,11 +1,9 @@
-import math
-
 import numpy as np
-import cv2 # Faster Fourier transforms than NumPy and Scikit-Image
+import cv2
 
 # References:
 #
-#     Peter Kovesi, "Image Features From Phase Congruency". Videre: A
+#     Peter Kovesi, "Imag5 Features From Phase Congruency". Videre: A
 #     Journal of Computer Vision Research. MIT Press. Volume 1, Number 3,
 #     Summer 1999 http://mitpress.mit.edu/e-journals/Videre/001/v13.html
 #
@@ -26,19 +24,12 @@ import cv2 # Faster Fourier transforms than NumPy and Scikit-Image
 #
 # The Software is provided "as is", without warranty of any kind.
 
-# Usage in UpToBrowFit.py
-#
-#   from phasecong3 import FilteredImagesCenteredOnCriticalBandAndWaveletBank
-#
-#   output = FilteredImagesCenteredOnCriticalBandAndWaveletBank(face, foCpf, facesPerImage, NumberScales, NumberAngles)
-#
-#       NumberScales should be odd (choose 3 to match wavelet features used for  correlation experiments)
-#       NumberAngles (choose 6 to match ...)
 
-# based on phasecong3.m
-def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
+# based on phasecong3.m by Peter Kovesi
+def PhaseCongruency(input_img, nscales=3, norient=6):
 
-    # nscale           4    - Number of wavelet scales, try values 3-6
+    # nscales          4    - Number of wavelet scales, try values 3-6.
+    #                         should be odd (choose 3 to match wavelet features used for correlation experiments)
     # norient          6    - Number of filter orientations.
     # minWaveLength    3    - Wavelength of smallest scale filter.
     # mult             2.1  - Scaling factor between successive filters.
@@ -86,13 +77,13 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
     #
     # pcSum = zeros(rows,cols);
 
-    f_cv = cv2.dft(np.float32(InputImage),flags=cv2.DFT_COMPLEX_OUTPUT)
+    f_cv = cv2.dft(np.float32(input_img),flags=cv2.DFT_COMPLEX_OUTPUT)
 
     #------------------------------
-    nrows, ncols = InputImage.shape
+    nrows, ncols = input_img.shape
     zero = np.zeros((nrows,ncols))
-    EO = np.zeros((nrows,ncols,NumberScales,NumberAngles),dtype=complex)
-    PC = np.zeros((nrows,ncols,NumberAngles))
+    EO = np.zeros((nrows,ncols,nscales,norient),dtype=complex)
+    PC = np.zeros((nrows,ncols,norient))
     covx2 = np.zeros((nrows,ncols))
     covy2 = np.zeros((nrows,ncols))
     covxy = np.zeros((nrows,ncols))
@@ -102,8 +93,8 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
 
 
     # Matrix of radii
-    cy = math.floor(nrows/2)
-    cx = math.floor(ncols/2)
+    cy = int(np.floor(nrows/2))
+    cx = int(np.floor(ncols/2))
     y, x = np.mgrid[0:nrows, 0:ncols]
     y = (y-cy)/nrows
     x = (x-cx)/ncols
@@ -123,26 +114,26 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
     #  Here I use the method of scale selection from the code I used to generate
     #   stimuli for my latest experiments (spatial feature scaling):
     #   /Users/carl/Studies/Face_Projects/features_wavelet
-    #NumberScales = 3 # should be odd
-    annularBandpassFilters = np.empty((nrows,ncols,NumberScales))
-    #p = np.arange(NumberScales) - math.floor(NumberScales/2)
+    #nscales = 3 # should be odd
+    annularBandpassFilters = np.empty((nrows,ncols,nscales))
+    #p = np.arange(nscales) - int(np.floor(nscales/2))
     #fSetCpo = CriticalBandCyclesPerObject*mult**p
     #fSetCpi = fSetCpo * ObjectsPerImage
 
     # Number of filter orientations.
-    #NumberAngles = 6
+    #norient = 6
     """ Ratio of angular interval between filter orientations and the standard deviation
         of the angular Gaussian function used to construct filters in the freq. plane.
     """
     dThetaOnSigma = 1.3
-    filterOrient = np.arange(start=0, stop=math.pi - math.pi / NumberAngles, step = math.pi / NumberAngles)
+    filterOrient = np.arange(start=0, stop=np.pi - np.pi / norient, step = np.pi / norient)
 
     # The standard deviation of the angular Gaussian function used to construct filters in the frequency plane.
-    thetaSigma = math.pi / NumberAngles / dThetaOnSigma;
+    thetaSigma = np.pi / norient / dThetaOnSigma;
 
-    BandpassFilters = np.empty((nrows,ncols,NumberScales,NumberAngles))
-    evenWavelets = np.empty((nrows,ncols,NumberScales,NumberAngles))
-    oddWavelets  = np.empty((nrows,ncols,NumberScales,NumberAngles))
+    BandpassFilters = np.empty((nrows,ncols,nscales,norient))
+    evenWavelets = np.empty((nrows,ncols,nscales,norient))
+    oddWavelets  = np.empty((nrows,ncols,nscales,norient))
 
     # The following implements the log-gabor transfer function
     """ From http://www.peterkovesi.com/matlabfns/PhaseCongruency/Docs/convexpl.html
@@ -176,19 +167,19 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
     #
     #
     #annularBandpassFilters[:,:,i] = logGabor * lowpassbutterworth
-    #logGabor = np.empty((nrows,ncols,NumberScales)) --> same as annularBandpassFilters
-    for s in np.arange(NumberScales):
+    #logGabor = np.empty((nrows,ncols,nscales)) --> same as annularBandpassFilters
+    for s in np.arange(nscales):
         wavelength = minWaveLength*mult**s
         fo = 1.0/wavelength                  # Centre frequency of filter.
-        logGabor = np.exp((-(np.log(radius/fo))**2) / (2 * math.log(sigmaOnf)**2))
+        logGabor = np.exp((-(np.log(radius/fo))**2) / (2 * np.log(sigmaOnf)**2))
         annularBandpassFilters[:,:,s] = logGabor*lowpassbutterworth  # Apply low-pass filter
         annularBandpassFilters[cy,cx,s] = 0          # Set the value at the 0 frequency point of the filter
                                                      # back to zero (undo the radius fudge).
 
     # main loop
-    for o in np.arange(NumberAngles):
+    for o in np.arange(norient):
         # Construct the angular filter spread function
-        angl = o*math.pi/NumberAngles # Filter angle.
+        angl = o*np.pi/norient # Filter angle.
         # For each point in the filter matrix calculate the angular distance from
         # the specified filter orientation.  To overcome the angular wrap-around
         # problem sine difference and cosine difference values are first computed
@@ -213,13 +204,13 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
             sine difference and cosine difference values are first computed and then
             the atan2 function is used to determine angular distance.
         """
-        ds = sintheta * math.cos(angl) - costheta * math.sin(angl)      # Difference in sine.
-        dc = costheta * math.cos(angl) + sintheta * math.sin(angl)      # Difference in cosine.
+        ds = sintheta * np.cos(angl) - costheta * np.sin(angl)      # Difference in sine.
+        dc = costheta * np.cos(angl) + sintheta * np.sin(angl)      # Difference in cosine.
         dtheta = np.abs(np.arctan2(ds,dc))                              # Absolute angular distance.
 
         # Scale theta so that cosine spread function has the right wavelength
         #   and clamp to pi
-        dtheta = np.minimum(dtheta*NumberAngles/2, math.pi)
+        dtheta = np.minimum(dtheta*norient/2, np.pi)
 
         #spread = np.exp((-dtheta**2) / (2 * thetaSigma**2));  # Calculate the angular
                                                               # filter component.
@@ -233,7 +224,7 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
         Energy            = np.zeros((nrows,ncols))
 
         maxAn = []
-        for s in np.arange(NumberScales):
+        for s in np.arange(nscales):
             filter = annularBandpassFilters[:,:,s] * spread # Multiply radial and angular
                                                             # components to get the filter.
 
@@ -258,7 +249,7 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
             # distribution.
             if s == 0:
             #     if noiseMethod == -1     # Use median to estimate noise statistics
-                tau = np.median(sumAn_ThisOrient) / math.sqrt(math.log(4))
+                tau = np.median(sumAn_ThisOrient) / np.sqrt(np.log(4))
             #     elseif noiseMethod == -2 # Use mode to estimate noise statistics
             #         tau = rayleighmode(sumAn_ThisOrient(:));
             #     end
@@ -275,8 +266,8 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
         # Accumulate total 3D energy vector data, this will be used to
         # determine overall feature orientation and feature phase/type
         EnergyV[:,:,0] = EnergyV[:,:,0] + sumE_ThisOrient
-        EnergyV[:,:,1] = EnergyV[:,:,1] + math.cos(angl)*sumO_ThisOrient
-        EnergyV[:,:,2] = EnergyV[:,:,2] + math.sin(angl)*sumO_ThisOrient
+        EnergyV[:,:,1] = EnergyV[:,:,1] + np.cos(angl)*sumO_ThisOrient
+        EnergyV[:,:,2] = EnergyV[:,:,2] + np.sin(angl)*sumO_ThisOrient
 
         # Get weighted mean filter response vector, this gives the weighted mean
         # phase angle.
@@ -289,7 +280,7 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
         # vector and the individual filter response vectors at each scale.  This
         # quantity is phase congruency multiplied by An, which we call energy.
 
-        for s in np.arange(NumberScales):
+        for s in np.arange(nscales):
             # Extract even and odd convolution results.
             E = EO[:,:,s,o].real
             O = EO[:,:,s,o].imag
@@ -324,13 +315,13 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
         # overestimate). As the estimated noise response at succesive scales
         # is scaled inversely proportional to bandwidth we have a simple
         # geometric sum.
-        totalTau = tau * (1 - (1/mult)**NumberScales)/(1-(1/mult))
+        totalTau = tau * (1 - (1/mult)**nscales)/(1-(1/mult))
 
         # Calculate mean and std dev from tau using fixed relationship
         # between these parameters and tau. See
         # http://mathworld.wolfram.com/RayleighDistribution.html
-        EstNoiseEnergyMean = totalTau*math.sqrt(math.pi/2)        # Expected mean and std
-        EstNoiseEnergySigma = totalTau*math.sqrt((4-math.pi)/2)   # values of noise energy
+        EstNoiseEnergyMean = totalTau*np.sqrt(np.pi/2)        # Expected mean and std
+        EstNoiseEnergySigma = totalTau*np.sqrt((4-np.pi)/2)   # values of noise energy
 
         T =  EstNoiseEnergyMean + k*EstNoiseEnergySigma # Noise threshold
         # end
@@ -345,7 +336,7 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
         # by the maximum amplitude at each point on the image.   If
         # there is only one non-zero component width takes on a value of 0, if
         # all components are equal width is 1.
-        width = (sumAn_ThisOrient/(maxAn + epsilon) - 1) / (NumberScales-1)
+        width = (sumAn_ThisOrient/(maxAn + epsilon) - 1) / (nscales-1)
 
         # Now calculate the sigmoidal weighting function for this orientation.
         weight = 1.0 / (1 + np.exp( (cutOff - width)*g))
@@ -356,8 +347,8 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
         pcSum = pcSum + PC[:,:,o]
 
         # Build up covariance data for every point
-        covx = PC[:,:,o]*math.cos(angl)
-        covy = PC[:,:,o]*math.sin(angl)
+        covx = PC[:,:,o]*np.cos(angl)
+        covy = PC[:,:,o]*np.sin(angl)
         covx2 = covx2 + covx**2
         covy2 = covy2 + covy**2
         covxy = covxy + covx*covy
@@ -371,17 +362,17 @@ def PhaseCongruency3(InputImage, NumberScales, NumberAngles):
     # the singular values.
 
     # First normalise covariance values by the number of orientations/2
-    covx2 = covx2/(NumberAngles/2)
-    covy2 = covy2/(NumberAngles/2)
-    covxy = 4*covxy/NumberAngles   # This gives us 2*covxy/(norient/2)
+    covx2 = covx2/(norient/2)
+    covy2 = covy2/(norient/2)
+    covxy = 4*covxy/norient   # This gives us 2*covxy/(norient/2)
     denom = np.sqrt(covxy**2 + (covx2-covy2)**2)+epsilon
     M = (covy2+covx2 + denom)/2          # Maximum moment
     m = (covy2+covx2 - denom)/2          # ... and minimum moment
 
     # Orientation and feature phase/type computation
     ORM = np.arctan2(EnergyV[:,:,2], EnergyV[:,:,1])
-    ORM[ORM<0] = ORM[ORM<0]+math.pi       # Wrap angles -pi..0 to 0..pi
-    ORM = np.round(ORM*180/math.pi)        # Orientation in degrees between 0 and 180
+    ORM[ORM<0] = ORM[ORM<0]+np.pi       # Wrap angles -pi..0 to 0..pi
+    ORM = np.round(ORM*180/np.pi)        # Orientation in degrees between 0 and 180
 
     OddV = np.sqrt(EnergyV[:,:,1]**2 + EnergyV[:,:,2]**2)
     featType = np.arctan2(EnergyV[:,:,0], OddV)  # Feature phase  pi/2 <-> white line,
