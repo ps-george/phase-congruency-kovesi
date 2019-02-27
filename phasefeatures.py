@@ -26,7 +26,7 @@ import cv2
 
 
 # based on phasecong3.m by Peter Kovesi
-def phase_congruency(input_img, nscales=3, norient=6, minWaveLength=3, mult=2.1, sigmaOnF=0.55, k=2.0, cutOff=0.5, g=10, noiseMethod=-1):
+def phasecong3(input_img, nscales=3, norient=6, minWaveLength=3, mult=2.1, sigmaOnF=0.55, k=2.0, cutOff=0.5, g=10, noiseMethod=-1):
 
     # nscales          4    - Number of wavelet scales, try values 3-6.
     #                         should be odd (choose 3 to match wavelet features used for correlation experiments)
