@@ -3,7 +3,7 @@ import cv2
 
 # References:
 #
-#     Peter Kovesi, "Imag5 Features From Phase Congruency". Videre: A
+#     Peter Kovesi, "Image Features From Phase Congruency". Videre: A
 #     Journal of Computer Vision Research. MIT Press. Volume 1, Number 3,
 #     Summer 1999 http://mitpress.mit.edu/e-journals/Videre/001/v13.html
 #
